@@ -7,7 +7,7 @@ var triangleVertexPositionBuffer;
 
 var lastTime = 0;
 
-function initGL(canvas) 
+function initGl(canvas) 
 {
     try 
     {
@@ -26,40 +26,19 @@ function initGL(canvas)
     }
 }
 
-function getShader(gl, id) 
+function compileShader(script, isFragmentShader) 
 {
-    var shaderScript = document.getElementById(id);
-    if (!shaderScript) 
-    {
-        return null;
-    }
-
-    var str = "";
-    var k = shaderScript.firstChild;
-    while (k) 
-    {
-        if (k.nodeType == 3) 
-        {
-            str += k.textContent;
-        }
-        k = k.nextSibling;
-    }
-
     var shader;
-    if (shaderScript.type == "x-shader/x-fragment") 
+    if (isFragmentShader)
     {
         shader = gl.createShader(gl.FRAGMENT_SHADER);
     } 
-    else if (shaderScript.type == "x-shader/x-vertex") 
+    else
     {
         shader = gl.createShader(gl.VERTEX_SHADER);
     } 
-    else 
-    {
-        return null;
-    }
 
-    gl.shaderSource(shader, str);
+    gl.shaderSource(shader, script);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) 
@@ -71,10 +50,10 @@ function getShader(gl, id)
     return shader;
 }
 
-function initShaders() 
+function initShaders(fragmentShaderScript, vertexShaderScript)
 {
-    var fragmentShader = getShader(gl, "shader-fs");
-    var vertexShader = getShader(gl, "shader-vs");
+    var fragmentShader = compileShader(fragmentShaderScript, true);
+    var vertexShader = compileShader(vertexShaderScript, false);
 
     shaderProgram = gl.createProgram();
     gl.attachShader(shaderProgram, vertexShader);
@@ -148,18 +127,4 @@ function tick(now)
 
     lastTime = now;
     requestAnimationFrame(tick);
-}
-
-function mazeStart() 
-{
-    var canvas = document.getElementById("maze");
-    initGL(canvas);
-    initShaders();
-    initMatrices();
-    initBuffers();
-
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.enable(gl.DEPTH_TEST);
-
-    tick();
 }

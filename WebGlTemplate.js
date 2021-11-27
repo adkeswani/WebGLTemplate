@@ -1,53 +1,102 @@
-var fragmentShaderScript = `
-    precision mediump float;
-    void main(void) 
-    {
-        gl_FragColor = vec4(0.4, 0.0, 1.0, 1.0);
-    }
-`
+var templateProgram;
+var templateFragmentShaderScript = `#version 300 es
 
-var vertexShaderScript = `
-    attribute vec3 aVertexPosition; 
+    precision highp float;
 
-    uniform mat4 uMVMatrix;
-    uniform mat4 uPMatrix;
+    uniform vec4 u_color;
+
+    out vec4 out_color;
 
     void main(void) 
     {
-        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        out_color = u_color;
     }
-`
+`;
 
-var triangleVertexPositionBuffer;
+var templateVertexShaderScript = `#version 300 es
+
+    in vec2 a_position; 
+
+    uniform mat4 u_projectionMatrix;
+    uniform mat4 u_modelViewMatrix;
+
+    void main(void) 
+    {
+        gl_Position = u_projectionMatrix * u_modelViewMatrix * vec4(a_position, 0.0, 1.0);
+    }
+`;
+
+var templateVertexArrayObject;
 var lastTime = 0;
+var projectionMatrix = glMatrix.mat4.create();
+var modelViewMatrix = glMatrix.mat4.create();
+
+function initMatrices()
+{
+    glMatrix.mat4.ortho(projectionMatrix, 0, gl.viewportWidth, 0, gl.viewportHeight, -10, 10);
+    glMatrix.mat4.identity(modelViewMatrix);
+}
 
 function initBuffers()
 {
-    // Set up vertex buffers
-    triangleVertexPositionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
-    var vertices = [
-        0.0,  0.0,  0.01,
-        20.0, 0.0,  0.01,
-        10.0, 10.0,  0.01
-    ];
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    triangleVertexPositionBuffer.itemSize = 3;
-    triangleVertexPositionBuffer.numItems = 3;
+    // Create buffer on GPU
+    var vertexBuffer = gl.createBuffer();
+
+    // Say that we're going to use that buffer as the ARRAY_BUFFER
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+
+    // Tell attribute how to get data from buffer
+    // Create a vertex array object (array of attribute state)
+    templateVertexArrayObject = gl.createVertexArray();
+
+    // Make it the current vertex array
+    gl.bindVertexArray(templateVertexArrayObject);
+
+    // Turn on the attribute, without this the attribute will be a constant
+    // Tell it we're going to be putting stuff from buffer into it.
+    gl.enableVertexAttribArray(program.a_position);
+
+    // How to get data out of the buffer, and bind ARRAY_BUFFER to the attribute
+    // Attribute will receive data from that ARRAY_BUFFER
+    var size = 2;
+    var type = gl.FLOAT;
+    var normalize = false;
+    var stride = 0;
+    var offset = 0;
+    gl.vertexAttribPointer(program.a_position, size, type, normalize, stride, offset);
 }
 
 function drawScene() 
 {
+    gl.useProgram(templateProgram);
+
+    glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, glMatrix.vec3.fromValues(0.1, 0.0, 0.0));
+    sendNewMatrices(projectionMatrix, modelViewMatrix);
+
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    glMatrix.mat4.translate(mvMatrix, mvMatrix, glMatrix.vec3.fromValues(1.0, 0.0, 0.0));
+    for (var i = 0; i < 50; i++)
+    {
+        sendNewColor([Math.random(), Math.random(), Math.random(), Math.random()]);
 
-    // Send vertex buffer to GL
-    gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
-    gl.vertexAttribPointer(shaderProgram.aVertexPosition, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0); 
-    setMatrixUniforms();
-    gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems);
+        // Copy new data over to buffer on GPU
+        var x = Math.floor(Math.random() * gl.viewportWidth);
+        var y = Math.floor(Math.random() * gl.viewportHeight);
+        var width = Math.floor(Math.random() * 20);
+        var height = Math.floor(Math.random() * 20);
+
+        var vertices = [
+            x,  y,
+            x + width, y,
+            x + width, y + height,
+            x, y + height,
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        var offset = 0;
+        gl.drawArrays(gl.TRIANGLES, offset, 4);
+    }
 }
 
 function tick(now)
@@ -66,12 +115,15 @@ function templateStart()
 {
     var canvas = document.getElementById("template");
     initGl(canvas);
-    initShaders(fragmentShaderScript, vertexShaderScript);
+    templateProgram = createProgram(templateFragmentShaderScript, templateVertexShaderScript);
+
     initMatrices();
-    initBuffers();
+    getLocations();
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
+
+    initBuffers();
 
     tick();
 }

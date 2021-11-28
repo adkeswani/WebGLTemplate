@@ -68,19 +68,19 @@ function initBuffers()
 
 function drawScene() 
 {
-    gl.useProgram(templateProgram);
-
     // Move everything across by 1, 1 each frame
     glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, glMatrix.vec3.fromValues(1.0, 1.0, 0.0));
-    sendNewMatrices(projectionMatrix, modelViewMatrix);
 
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    gl.useProgram(templateProgram);
+    sendNewMatrices(templateProgram, projectionMatrix, modelViewMatrix);
+
     // Create 50 rectangles of random size, position, color
     for (var i = 0; i < 50; i++)
     {
-        sendNewColor([Math.random(), Math.random(), Math.random(), Math.random()]);
+        sendNewColor(templateProgram, [Math.random(), Math.random(), Math.random(), Math.random()]);
 
         // Copy new data over to buffer on GPU
         var x = Math.floor(Math.random() * gl.viewportWidth);
@@ -117,10 +117,11 @@ function templateStart()
 {
     var canvas = document.getElementById("template");
     initGl(canvas);
-    templateProgram = createProgram(templateFragmentShaderScript, templateVertexShaderScript);
 
     initMatrices();
-    getLocations();
+
+    templateProgram = createProgram(templateFragmentShaderScript, templateVertexShaderScript);
+    getLocations(templateProgram);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
